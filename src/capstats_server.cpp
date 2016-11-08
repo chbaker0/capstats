@@ -40,17 +40,23 @@ void post_user_handler( const shared_ptr< Session > session )
 
     session->fetch( content_length, [ ]( const shared_ptr< Session > session, const Bytes & body )
     {
-        fprintf( stdout, "%.*s\n", ( int ) body.size( ), body.data( ) );
-        session->close( OK, "Hello, World!", { { "Content-Length", "13" } } );
+        try
+        {
+            fprintf( stdout, "%.*s\n", ( int ) body.size( ), body.data( ) );
 
-		Value player;
-		player.loadFromString(string(body.begin(), body.end()));
+            Value player;
+            player.loadFromString(string(body.begin(), body.end()));
 
-		playerDAO.addPlayer(Player(player["telegramId"].getInteger(), player["name"].getString()));
+            playerDAO.addPlayer(Player(player["telegramId"].getInteger(), player["name"].getString()));
 
-		session->close(OK, "", { { "Content-Length", "0" },{ "Content-Type", "application/json" } });
-
-	} );
+            session->close(OK, "", { { "Content-Length", "0" },{ "Content-Type", "application/json" } });
+        }
+        catch (const exception& e)
+        {
+            cerr << e.what() << endl;
+            session->close(INTERNAL_SERVER_ERROR, "", {{"Content-Length", "0"}, {"Content-Type", "text/html"}});
+        }
+    });
 }
 
 void get_user_handler(const shared_ptr<Session> session)
@@ -160,11 +166,11 @@ Value getPlayerJson(long id) {
 		playerJson["telegramId"] = Value((int)player.getTelegramId());
 	}
 	catch (PlayerNotFoundException) {
-		
+
 	}
 
 	Object out;
 	out["player"] = playerJson;
-	
+
 	return out;
 }
